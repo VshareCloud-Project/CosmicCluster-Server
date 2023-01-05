@@ -1,0 +1,22 @@
+{
+    "debug": true,
+    "log_level": "INFO",
+    "log_file": ".log/api-server.log",
+    "log_error_file": ".log/api-server-error.log",
+    "log_file_size": 10485760,
+    "log_file_backup_count": 5,
+    "log_file_encoding": "utf-8",
+    "log_error_level": "ERROR",
+    "redis": {
+        "host": "127.0.0.1",
+        "port": 6379,
+        "db": 0,
+        "password": ""
+    },
+    "queue_prefix": "api.queue.applications",
+    "db_prefix": "db.applications",
+    "timezone": "Asia/Shanghai",
+    "installed_apps": [
+        
+    ]
+}
