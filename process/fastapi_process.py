@@ -42,30 +42,32 @@ class fastapi_process(threading.Thread):
                     try:
                         encrypted_token_decrypt1 = decrypt_rsa_class.decrypt(encrypted_token)
                     except:
-                        return Response({"ret":400,"msg":"Decrypt Failed"},status_code=400)
+                        return JSONResponse({"ret":400,"msg":"Decrypt Failed"},status_code=400)
                     db = db_mysql.db()
                     db_res = db.read_cmd("SELECT keychain FROM `dnode` WHERE `uuid` = \"%s\""% (user_id,))
                     if len(db_res) == 0:
-                        return Response({"ret":400,"msg":"User Not Found!"},status_code=400)
+                        return JSONResponse({"ret":400,"msg":"User Not Found!"},status_code=400)
                     keychain = db_res[0][0].encode()
                     encrypted_sign = base64.b64decode(encrypted_data_dict["sign"])
+                    encrypted_token_sign = base64.b64decode(encrypted_data_dict["token_sign"])
                     sign_rsa_class = rsa.rsa_utils(pubkey=keychain)
                     try:
                         assert sign_rsa_class.verify(encrypted_data.encode(),encrypted_sign) == True
+                        assert sign_rsa_class.verify(encrypted_data_dict["token"].encode(),encrypted_token_sign) == True
                     except:
-                        return Response({"ret":400,"msg":"User Verify failed"},status_code=400)
+                        return JSONResponse({"ret":400,"msg":"User Verify failed"},status_code=400)
                     
                     
                     try:
                         encrypted_data_decrypt = aes.cbc_decrypt(encrypted_data,encrypted_token_decrypt1.decode())
                     except:
-                        return Response({"ret":400,"msg":"Decrypt Failed"},status_code=400)
+                        return JSONResponse({"ret":400,"msg":"Decrypt Failed"},status_code=400)
                     org_data = json.loads(encrypted_data_decrypt)
                     request.state.origin_data = org_data
             except:
                 import traceback
                 logging.error(traceback.format_exc())
-                return Response("Verify Failed",status_code=400)
+                return JSONResponse({"ret":400,"msg":"Verify Failed"},status_code=400)
             response = await call_next(request)
             if response.status_code == 200:
                 response_body = b""
@@ -76,6 +78,7 @@ class fastapi_process(threading.Thread):
                 new_response_body["encrypt"] = aes.cbc_encrypt(response_body,newpassword)
                 new_response_body["sign"] = base64.b64encode(decrypt_rsa_class.sign(new_response_body["encrypt"].encode())).decode()
                 new_response_body["token"] = base64.b64encode(sign_rsa_class.encrypt(newpassword.encode())).decode()
+                new_response_body["token_sign"] = base64.b64encode(decrypt_rsa_class.sign(new_response_body["token"].encode())).decode()
                 response = JSONResponse(new_response_body)
 
             return response
