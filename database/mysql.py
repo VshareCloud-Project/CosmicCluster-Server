@@ -6,16 +6,16 @@ import logging
 
 class db:
 
-    def __init__(self,default_db="mysql"):
+    def __init__(self,default_db="default"):
         c = configloader.config()
         self.dbname = default_db
         self.c = c
-        self.d = pymysql.Connect(host=c.getkey(default_db)["host"], user=c.getkey(default_db)["user"], password=c.getkey(default_db)["password"], database=c.getkey(default_db)["database"])
+        self.d = pymysql.Connect(host=c.getkey("mysql")[default_db]["host"], user=c.getkey("mysql")[default_db]["user"], password=c.getkey("mysql")[default_db]["password"], database=c.getkey("mysql")[default_db]["database"])
         self.cursor = self.d.cursor()
     def __del__(self):
         self.d.close()
     def logcmd(self,command):
-        need_log = self.c.getkey(self.dbname)["execute_log"]
+        need_log = self.c.getkey("mysql")[self.dbname]["execute_log"]
         if need_log is True:
             logging.debug("execute command: %s",command)
         

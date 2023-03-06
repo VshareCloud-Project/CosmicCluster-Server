@@ -63,6 +63,7 @@ class fastapi_process(threading.Thread):
                     except:
                         return JSONResponse({"ret":400,"msg":"Decrypt Failed"},status_code=400)
                     org_data = json.loads(encrypted_data_decrypt)
+                    request.state.user_uuid = user_id
                     request.state.origin_data = org_data
             except:
                 import traceback
@@ -85,3 +86,4 @@ class fastapi_process(threading.Thread):
         self.fastapi.include_router(v0_router.router)
     def run(self):
         uvicorn.run(self.fastapi,host=self.bind,port=self.bind_port)
+        uvicorn.main()

@@ -13,12 +13,22 @@
     "rsa_private_key": "config/rsa_private_key.pem",
     "rsa_public_key": "config/rsa_public_key.pem",
     "mysql": {
-        "host": "localhost",
-        "port": 3306,
-        "user": "",
-        "password": "",
-        "db": "",
-        "execute_log": true
+        "default": {
+            "host": "localhost",
+            "port": 3306,
+            "user": "",
+            "password": "",
+            "db": "",
+            "execute_log": true
+        },
+        "db_app.yeaosound.example": {
+            "host": "localhost",
+            "port": 3306,
+            "user": "",
+            "password": "",
+            "db": "",
+            "execute_log": true
+        }
     },
     "redis": {
         "host": "127.0.0.1",
