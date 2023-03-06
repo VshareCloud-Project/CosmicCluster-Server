@@ -5,6 +5,30 @@ import configloader
 import logging
 from logging import handlers
 from threading import Event
+import ctypes
+import inspect
+
+def _async_raise(tid, exctype):
+    """raises the exception, performs cleanup if needed"""
+    try:
+        tid = ctypes.c_long(tid)
+        if not inspect.isclass(exctype):
+            exctype = type(exctype)
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exctype))
+        if res == 0:
+            # pass
+            raise ValueError("invalid thread id")
+        elif res != 1:
+            # """if it returns a number greater than one, you're in trouble,
+            # and you should call it again with exc=NULL to revert the effect"""
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, None)
+            raise SystemError("PyThreadState_SetAsyncExc failed")
+    except Exception as err:
+        print(err)
+
+def _stop_thread(thread):
+    """终止线程"""
+    _async_raise(thread.ident, SystemExit)
 
 def main():
     c = configloader.config()
@@ -29,14 +53,17 @@ def main():
     p.start()
     while(p.is_alive()):
         try:
-            p.join(1)
+            p.join(10)
         except (KeyboardInterrupt, SystemExit, SystemError):
-            logging.info("Stopping process")
             break
         except:
+            import traceback
             logging.error("Error in main thread")
-            logging.error(sys.exc_info()[1])
-            break
+            logging.error(traceback.format_exc())
+    if p.is_alive():
+        _stop_thread(p)
+        logging.info("Force Stopping process")
+    return 0
 
 if __name__ == "__main__":
     main()
