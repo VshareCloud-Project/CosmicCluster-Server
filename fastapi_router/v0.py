@@ -33,38 +33,37 @@ async def post_ping(request: Request):
     return JSONResponse({"ret": 0, "msg": "pong"})
 
 
-@router.post("/status")
+@router.post("/gettask")
 async def post_status(request: Request):
-    data = request.state.origin_data
+    node_status_data = request.state.origin_data["status"]
     user_id = request.state.user_uuid
     db = db_mysql.db()
     db.run_multi_cmd(
         """UPDATE `dnode` SET `cpus` = {cpu_num},`memory` = {memory_total},`storage` = {hdd_all_total},`disk_info` = "{disk_info}", `last_seen`="{last_seen}" WHERE `uuid` = "{user_id}";
-    """.format(cpu_num=data["cpu_num"],
-               memory_total=data["memory_total"],
-               hdd_all_total=data["hdd_all_total"],
+    """.format(cpu_num=node_status_data["cpu_num"],
+               memory_total=node_status_data["memory_total"],
+               hdd_all_total=node_status_data["hdd_all_total"],
                disk_info=base64.b64encode(
-                   json.dumps(data["disk_info"]).encode()).decode("utf-8"),
+                   json.dumps(node_status_data["disk_info"]).encode()).decode("utf-8"),
                last_seen=datetime.datetime.now(),
                user_id=user_id,
-               percent_cpu=data["cpu_persent"] / 100,
-               percent_mem=data["memory_used"] / data["memory_total"],
-               percent_disk=data["hdd_all_used"] / data["hdd_all_total"]))
+               percent_cpu=node_status_data["cpu_persent"] / 100,
+               percent_mem=node_status_data["memory_used"] / node_status_data["memory_total"],
+               percent_disk=node_status_data["hdd_all_used"] / node_status_data["hdd_all_total"]))
     db.run_cmd(
         """INSERT INTO `dnode_status_log` (`node_id`, `percent_cpu`,`percent_mem`,`percent_disk`,`disk_info`,`update_time`) VALUES ("{user_id}", {percent_cpu},{percent_mem}, {percent_disk},"{disk_info}","{last_seen}");
-""".format(cpu_num=data["cpu_num"],
-           memory_total=data["memory_total"],
-           hdd_all_total=data["hdd_all_total"],
+""".format(cpu_num=node_status_data["cpu_num"],
+           memory_total=node_status_data["memory_total"],
+           hdd_all_total=node_status_data["hdd_all_total"],
            disk_info=base64.b64encode(json.dumps(
-               data["disk_info"]).encode()).decode("utf-8"),
+               node_status_data["disk_info"]).encode()).decode("utf-8"),
            last_seen=datetime.datetime.now(),
            user_id=user_id,
-           percent_cpu=data["cpu_persent"] / 100,
-           percent_mem=data["memory_used"] / data["memory_total"],
-           percent_disk=data["hdd_all_used"] / data["hdd_all_total"]))
+           percent_cpu=node_status_data["cpu_persent"] / 100,
+           percent_mem=node_status_data["memory_used"] / node_status_data["memory_total"],
+           percent_disk=node_status_data["hdd_all_used"] / node_status_data["hdd_all_total"]))
+    tasks = request.state.origin_data["tasks"]
+    for taskid,task in tasks.items():
+        pass
+        #TODO: Hold on the task
     return JSONResponse({"ret": 0, "msg": "successful"})
-
-
-@router.post("/gettask")
-async def post_gettask(request: Request):
-    return JSONResponse({"ret": 0, "msg": "gettask"})
