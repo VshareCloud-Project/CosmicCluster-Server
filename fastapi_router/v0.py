@@ -34,7 +34,7 @@ async def post_ping(request: Request):
 
 
 @router.post("/gettask")
-async def post_status(request: Request):
+async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     node_status_data = request.state.origin_data["status"]
     user_id = request.state.user_uuid
     db = db_mysql.db()
@@ -63,7 +63,11 @@ async def post_status(request: Request):
            percent_mem=node_status_data["memory_used"] / node_status_data["memory_total"],
            percent_disk=node_status_data["hdd_all_used"] / node_status_data["hdd_all_total"]))
     tasks = request.state.origin_data["tasks"]
-    for taskid,task in tasks.items():
+    checks = request.state.origin_data["check"]
+    for check in checks:
         pass
+        #TODO: Check the task
+    for taskid,task in tasks.items():
+        backgroundtasks.add_task(task["task"],taskid,task["data"])
         #TODO: Hold on the task
     return JSONResponse({"ret": 0, "msg": "successful"})
