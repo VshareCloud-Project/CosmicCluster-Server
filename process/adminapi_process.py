@@ -44,7 +44,7 @@ class adminapi_process(threading.Thread):
                     except:
                         return JSONResponse({"ret":400,"msg":"Decrypt Failed"},status_code=400)
                     db = db_mysql.db()
-                    db_res = db.read_cmd("SELECT keychain FROM `dnode` WHERE `uuid` = \"%s\""% (user_id,))
+                    db_res = db.read_cmd("SELECT keychain FROM `admin_node` WHERE `uuid` = \"%s\""% (user_id,))
                     if len(db_res) == 0:
                         return JSONResponse({"ret":400,"msg":"User Not Found!"},status_code=400)
                     keychain = db_res[0][0].encode()
