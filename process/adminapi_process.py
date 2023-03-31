@@ -8,16 +8,16 @@ import logging
 import configloader
 import json
 from database import mysql as db_mysql
-import fastapi_router.v0 as v0_router
+import admin_router.v0 as v0_router
 from tools.base import aes
 from tools.base.rsa_utils import openssl as rsa
 from fastapi import Response
 from fastapi.responses import JSONResponse
-class fastapi_process(threading.Thread):
+class adminapi_process(threading.Thread):
     '''
     The FastAPI Process
     '''
-    def __init__(self,bind="0.0.0.0",bind_port=8000):
+    def __init__(self,bind="0.0.0.0",bind_port=7999):
         super().__init__()
         self.bind = bind
         self.c = configloader.config()

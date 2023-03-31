@@ -27,7 +27,7 @@ def _async_raise(tid, exctype):
         print(err)
 
 def _stop_thread(thread):
-    """终止线程"""
+    """终止-线程"""
     _async_raise(thread.ident, SystemExit)
 
 def main():
