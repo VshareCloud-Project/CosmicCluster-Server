@@ -2,6 +2,8 @@
     "debug": true,
     "bind": "0.0.0.0",
     "port": 8000,
+    "admin_bind":"0.0.0.0",
+    "admin_port": 8001,
     "log_level": "INFO",
     "log_file": ".log/api-server.log",
     "log_error_file": ".log/api-server-error.log",

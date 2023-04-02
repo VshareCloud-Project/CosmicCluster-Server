@@ -1,6 +1,6 @@
 import os
 import sys
-from process import fastapi_process
+from process import fastapi_process, adminapi_process
 import configloader
 import logging
 from logging import handlers
@@ -50,9 +50,14 @@ def main():
         logging.getLogger('').addHandler(file_error_handler)
     logging.info("Starting process")
     p = fastapi_process.fastapi_process(c.getkey("bind"),c.getkey("port"))
+    q = adminapi_process.adminapi_process(c.getkey("admin_bind"),c.getkey("admin_port"))
+    q.start()
     p.start()
     while(p.is_alive()):
         try:
+            if not q.is_alive():
+                logging.error("AdminAPI process is dead, restarting")
+                q.start()
             p.join(10)
         except (KeyboardInterrupt, SystemExit, SystemError):
             break
@@ -62,6 +67,9 @@ def main():
             logging.error(traceback.format_exc())
     if p.is_alive():
         _stop_thread(p)
+        logging.info("Force Stopping process")
+    if q.is_alive():
+        _stop_thread(q)
         logging.info("Force Stopping process")
     return 0
 
