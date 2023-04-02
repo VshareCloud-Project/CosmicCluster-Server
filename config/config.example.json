@@ -39,6 +39,7 @@
         "password": ""
     },
     "queue_prefix": "api.queue.applications",
+    "message_session_prefix": "api.session.applications",
     "db_prefix": "db.applications",
     "timezone": "Asia/Shanghai",
     "installed_apps": [
