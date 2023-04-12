@@ -9,8 +9,10 @@ import datetime
 from database import session_helper
 from tools import calculate
 
-server_messages = session_helper.Session("server_messages")
-client_messages = session_helper.Session("client_messages")
+server_messages = session_helper.Session("server_messages_s") #服务端发出的消息，服务端验证使用
+server_messages_to_client = session_helper.Session("server_messages_c") #服务端发出的消息，客户端验证使用
+client_messages = session_helper.Session("client_messages_s") #客户端发出的消息，服务端验证使用
+client_messages_to_server = session_helper.Session("client_messages_c") #客户端发出的消息，客户端验证使用
 router = APIRouter(prefix="/v0",
                    responses={
                        404: {
@@ -48,6 +50,7 @@ async def post_addtask(request: Request, backgroundtasks: BackgroundTasks):
     if type(message) == dict or type(message) == list:
         message = calculate.base64_encode(json.dumps(message, indent=0))
     server_messages.add(".".join([destination, app, message_id]), message)
+    server_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -64,6 +67,7 @@ async def post_addtasks(request: Request, backgroundtasks: BackgroundTasks):
         if type(message) == dict or type(message) == list:
             message = calculate.base64_encode(json.dumps(message, indent=0))
         server_messages.add(".".join([destination, app, message_id]), message)
+        server_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -113,6 +117,7 @@ async def post_messages(request: Request, backgroundtasks: BackgroundTasks):
     messages = {}
     new_messages = client_messages.find(user_uuid)
     for new_message in new_messages:
+        
         message = client_messages.get(new_message)
         message_id = new_message.split(".")[2]
         app = new_message.split(".")[1]

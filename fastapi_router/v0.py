@@ -1,11 +1,17 @@
+import logging
 from fastapi import APIRouter, Request, Response, BackgroundTasks
 import json
 import importlib
 from fastapi.responses import JSONResponse
-from database import mysql as db_mysql
+from database import mysql as db_mysql, session_helper
 import time
 import base64
 import datetime
+from tools import calculate
+server_messages = session_helper.Session("server_messages_s") #服务端发出的消息，服务端验证使用
+server_messages_to_client = session_helper.Session("server_messages_c") #服务端发出的消息，客户端验证使用
+client_messages = session_helper.Session("client_messages_s") #客户端发出的消息，服务端验证使用
+client_messages_to_server = session_helper.Session("client_messages_c") #客户端发出的消息，客户端验证使用
 
 router = APIRouter(prefix="/v0",
                    responses={
@@ -62,12 +68,60 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
            percent_cpu=node_status_data["cpu_persent"] / 100,
            percent_mem=node_status_data["memory_used"] / node_status_data["memory_total"],
            percent_disk=node_status_data["hdd_all_used"] / node_status_data["hdd_all_total"]))
-    tasks = request.state.origin_data["tasks"]
-    checks = request.state.origin_data["check"]
-    for check in checks:
-        pass
-        #TODO: Check the task
-    for taskid,task in tasks.items():
-        backgroundtasks.add_task(task["task"],taskid,task["data"])
-        #TODO: Hold on the task
-    return JSONResponse({"ret": 0, "msg": "successful"})
+    res = {}
+    # Check the return MD5 is correct
+    easts = request.state.origin_data["east"]
+    for east in easts:
+        message_id = east["message_id"]
+        app = east["application"]
+        message = server_messages_to_client.get(".".join([user_id, app, message_id]))
+        if message is None:
+            continue
+        if calculate.sha512_verify(".".join([message_id, user_id, app, message]), east["sign"]):
+            server_messages_to_client.delete(".".join([user_id, app, message_id]))
+
+    
+    # Receive new messages from the client
+    wests = request.state.origin_data["west"]
+    data = {}
+    for west in wests:
+        try:
+            message_id = west["message_id"]
+            app = west["application"]
+            destination = west["destination"]
+            message = west["message"]
+            if type(message) == dict or type(message) == list:
+                message = calculate.base64_encode(json.dumps(message, indent=0))
+            client_messages.add(".".join([destination, app, message_id]), message)
+            client_messages_to_server.add(".".join([destination, app, message_id]), message)
+            sign = calculate.sha512(".".join(
+            [message_id, destination, app, message]))
+            data[message_id] = sign
+        except:
+            import traceback
+            logging.error(traceback.format_exc())
+        
+
+    # Send the return MD5 of the previous message to the client
+    res["west"] = data
+
+    # Send new messages to the client
+    data = {}
+    new_messages = client_messages.find(user_id)
+    for new_message in new_messages:
+        
+        message = client_messages.get(new_message)
+        message_id = new_message.split(".")[2]
+        app = new_message.split(".")[1]
+        destination = new_message.split(".")[0]
+        if type(message) == bytes:
+            message = message.decode('utf-8')
+        data[message_id] = {
+            "destination": destination,
+            "message": message,
+            "application": app
+        }
+
+    res["east"] = data
+
+    return JSONResponse({"ret": 0, "msg": "successful", "data": res})
