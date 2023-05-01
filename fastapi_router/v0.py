@@ -8,10 +8,10 @@ import time
 import base64
 import datetime
 from tools import calculate
-server_messages = session_helper.Session("server_messages_s") #服务端发出的消息，服务端验证使用
-server_messages_to_client = session_helper.Session("server_messages_c") #服务端发出的消息，客户端验证使用
-client_messages = session_helper.Session("client_messages_s") #客户端发出的消息，服务端验证使用
-client_messages_to_server = session_helper.Session("client_messages_c") #客户端发出的消息，客户端验证使用
+app_messages_verify = session_helper.Session("app_messages_verify") #服务端发出的消息，服务端验证使用
+app_messages_to_client = session_helper.Session("app_messages_to_client") #服务端发出的消息，客户端验证使用
+client_messages_verify = session_helper.Session("client_messages_verify") #客户端发出的消息，服务端验证使用
+client_messages_to_app = session_helper.Session("client_messages_to_app") #客户端发出的消息，客户端验证使用
 
 router = APIRouter(prefix="/v0",
                    responses={
@@ -74,11 +74,11 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     for east in easts:
         message_id = east["message_id"]
         app = east["application"]
-        message = server_messages_to_client.get(".".join([user_id, app, message_id]))
+        message = app_messages_to_client.get(".".join([user_id, app, message_id]))
         if message is None:
             continue
         if calculate.sha512_verify(".".join([message_id, user_id, app, message]), east["sign"]):
-            server_messages_to_client.delete(".".join([user_id, app, message_id]))
+            app_messages_to_client.delete(".".join([user_id, app, message_id]))
 
     
     # Receive new messages from the client
@@ -92,11 +92,14 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
             message = west["message"]
             if type(message) == dict or type(message) == list:
                 message = calculate.base64_encode(json.dumps(message, indent=0))
-            client_messages.add(".".join([destination, app, message_id]), message)
-            client_messages_to_server.add(".".join([destination, app, message_id]), message)
+            client_messages_verify.add(".".join([destination, app, message_id]), message)
+            client_messages_to_app.add(".".join([destination, app, message_id]), message)
             sign = calculate.sha512(".".join(
             [message_id, destination, app, message]))
-            data[message_id] = sign
+            data[message_id] = {
+                "sign": sign,
+                "application": app,
+            }
         except:
             import traceback
             logging.error(traceback.format_exc())
@@ -107,10 +110,10 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
 
     # Send new messages to the client
     data = {}
-    new_messages = client_messages.find(user_id)
+    new_messages = client_messages_verify.find(user_id)
     for new_message in new_messages:
         
-        message = client_messages.get(new_message)
+        message = client_messages_verify.get(new_message)
         message_id = new_message.split(".")[2]
         app = new_message.split(".")[1]
         destination = new_message.split(".")[0]

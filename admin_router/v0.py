@@ -9,10 +9,11 @@ import datetime
 from database import session_helper
 from tools import calculate
 
-server_messages = session_helper.Session("server_messages_s") #服务端发出的消息，服务端验证使用
-server_messages_to_client = session_helper.Session("server_messages_c") #服务端发出的消息，客户端验证使用
-client_messages = session_helper.Session("client_messages_s") #客户端发出的消息，服务端验证使用
-client_messages_to_server = session_helper.Session("client_messages_c") #客户端发出的消息，客户端验证使用
+app_messages_verify = session_helper.Session("app_messages_verify") #服务端发出的消息，服务端验证使用
+app_messages_to_client = session_helper.Session("app_messages_to_client") #服务端发出的消息，客户端验证使用
+client_messages_verify = session_helper.Session("client_messages_verify") #客户端发出的消息，服务端验证使用
+client_messages_to_app = session_helper.Session("client_messages_to_app")
+
 router = APIRouter(prefix="/v0",
                    responses={
                        404: {
@@ -49,8 +50,8 @@ async def post_addtask(request: Request, backgroundtasks: BackgroundTasks):
     message = data["message"]
     if type(message) == dict or type(message) == list:
         message = calculate.base64_encode(json.dumps(message, indent=0))
-    server_messages.add(".".join([destination, app, message_id]), message)
-    server_messages_to_client.add(".".join([destination, app, message_id]), message)
+    app_messages_verify.add(".".join([destination, app, message_id]), message)
+    app_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -66,8 +67,8 @@ async def post_addtasks(request: Request, backgroundtasks: BackgroundTasks):
         message = newmessage["message"]
         if type(message) == dict or type(message) == list:
             message = calculate.base64_encode(json.dumps(message, indent=0))
-        server_messages.add(".".join([destination, app, message_id]), message)
-        server_messages_to_client.add(".".join([destination, app, message_id]), message)
+        app_messages_verify.add(".".join([destination, app, message_id]), message)
+        app_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -78,7 +79,7 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     message_id = data["message_id"]
     app = data["application"]
     destination = data["destination"]
-    message = server_messages.get(".".join([destination, app, message_id]))
+    message = app_messages_verify.get(".".join([destination, app, message_id]))
     if message == None:
         return JSONResponse({"ret": 404, "msg": "Not found"})
     if type(message) == bytes:
@@ -98,7 +99,7 @@ async def post_multi(request: Request, backgroundtasks: BackgroundTasks):
         message_id = newmessage["message_id"]
         app = newmessage["application"]
         destination = newmessage["destination"]
-        message = server_messages.get(".".join([destination, app, message_id]))
+        message = app_messages_verify.get(".".join([destination, app, message_id]))
         if message == None:
             continue
         if type(message) == bytes:
@@ -115,10 +116,10 @@ async def post_messages(request: Request, backgroundtasks: BackgroundTasks):
     data = request.state.origin_data
     user_uuid = request.state.user_uuid
     messages = {}
-    new_messages = client_messages.find(user_uuid)
+    new_messages = client_messages_to_app.find(user_uuid)
     for new_message in new_messages:
         
-        message = client_messages.get(new_message)
+        message = client_messages_to_app.get(new_message)
         message_id = new_message.split(".")[2]
         app = new_message.split(".")[1]
         destination = new_message.split(".")[0]
@@ -141,14 +142,14 @@ async def post_updatestatus(request: Request,
     app = data["application"]
     destination = request.state.user_uuid
     sign = data["sign"]
-    message = client_messages.get(".".join([destination, app, message_id]))
+    message = client_messages_to_app.get(".".join([destination, app, message_id]))
     if message == None:
         return JSONResponse({"ret": 404, "msg": "Not found"})
     if type(message) == bytes:
         message = message.decode('utf-8')
     if calculate.sha512_verify(
             ".".join([message_id, destination, app, message]), sign):
-        client_messages.remove(".".join([destination, app, message_id]))
+        client_messages_to_app.remove(".".join([destination, app, message_id]))
         return JSONResponse({"ret": 0, "msg": "ok"})
     else:
         return JSONResponse({"ret": 401, "msg": "Sign Invalid"})
@@ -164,12 +165,12 @@ async def post_updatemultistatus(request: Request,
         message_id = newmessage["message_id"]
         sign = newmessage["sign"]
         app = newmessage["application"]
-        message = client_messages.get(".".join([destination, app, message_id]))
+        message = client_messages_to_app.get(".".join([destination, app, message_id]))
         if message == None:
             continue
         if type(message) == bytes:
             message = message.decode('utf-8')
         if calculate.sha512_verify(
                 ".".join([message_id, destination, app, message]), sign):
-            client_messages.remove(".".join([destination, app, message_id]))
+            client_messages_to_app.remove(".".join([destination, app, message_id]))
     return JSONResponse({"ret": 0, "msg": "ok"})
