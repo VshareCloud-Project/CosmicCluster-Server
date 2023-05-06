@@ -78,7 +78,7 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
         if message is None:
             continue
         if calculate.sha512_verify(".".join([message_id, user_id, app, message]), east["sign"]):
-            app_messages_to_client.delete(".".join([user_id, app, message_id]))
+            app_messages_to_client.remove(".".join([user_id, app, message_id]))
 
     
     # Receive new messages from the client
