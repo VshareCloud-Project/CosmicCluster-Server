@@ -9,8 +9,8 @@ import datetime
 from database import session_helper
 from tools import calculate
 
-app_messages_verify = session_helper.Session("app_messages_verify") #服务端发出的消息，服务端验证使用
-app_messages_to_client = session_helper.Session("app_messages_to_client") #服务端发出的消息，客户端验证使用
+app_messages_verify = session_helper.Session("admin_app_messages_verify") #服务端发出的消息，服务端验证使用
+app_messages_to_client = session_helper.Session("admin_app_messages_to_client") #服务端发出的消息，客户端验证使用
 client_messages_verify = session_helper.Session("client_messages_verify") #客户端发出的消息，服务端验证使用
 client_messages_to_app = session_helper.Session("client_messages_to_app")
 
@@ -50,8 +50,9 @@ async def post_addtask(request: Request, backgroundtasks: BackgroundTasks):
     message = data["message"]
     if type(message) == dict or type(message) == list:
         message = calculate.base64_encode(json.dumps(message, indent=0))
-    app_messages_verify.add(".".join([destination, app, message_id]), message)
-    app_messages_to_client.add(".".join([destination, app, message_id]), message)
+    if app_messages_verify.get(".".join([destination, app, message_id])) == None:
+        app_messages_verify.add(".".join([destination, app, message_id]), message)
+        app_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -67,8 +68,9 @@ async def post_addtasks(request: Request, backgroundtasks: BackgroundTasks):
         message = newmessage["message"]
         if type(message) == dict or type(message) == list:
             message = calculate.base64_encode(json.dumps(message, indent=0))
-        app_messages_verify.add(".".join([destination, app, message_id]), message)
-        app_messages_to_client.add(".".join([destination, app, message_id]), message)
+        if app_messages_verify.get(".".join([destination, app, message_id])) == None:
+            app_messages_verify.add(".".join([destination, app, message_id]), message)
+            app_messages_to_client.add(".".join([destination, app, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
