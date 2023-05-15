@@ -45,14 +45,14 @@ async def post_addtask(request: Request, backgroundtasks: BackgroundTasks):
     #TODO add a message to task
     data = request.state.origin_data
     message_id = data["message_id"]
-    app = data["application"]
+    source = data["source"]
     destination = data["destination"]
     message = data["message"]
     if type(message) == dict or type(message) == list:
         message = calculate.base64_encode(json.dumps(message, indent=0))
-    if app_messages_verify.get(".".join([destination, app, message_id])) == None:
-        app_messages_verify.add(".".join([destination, app, message_id]), message)
-        app_messages_to_client.add(".".join([destination, app, message_id]), message)
+    if app_messages_verify.get(".".join([destination, source, message_id])) == None:
+        app_messages_verify.add(".".join([destination, source, message_id]), message)
+        app_messages_to_client.add(".".join([destination, source, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -63,14 +63,14 @@ async def post_addtasks(request: Request, backgroundtasks: BackgroundTasks):
     messages = data["messages"]
     for newmessage in messages:
         message_id = newmessage["message_id"]
-        app = newmessage["application"]
+        source = newmessage["source"]
         destination = newmessage["destination"]
         message = newmessage["message"]
         if type(message) == dict or type(message) == list:
             message = calculate.base64_encode(json.dumps(message, indent=0))
-        if app_messages_verify.get(".".join([destination, app, message_id])) == None:
-            app_messages_verify.add(".".join([destination, app, message_id]), message)
-            app_messages_to_client.add(".".join([destination, app, message_id]), message)
+        if app_messages_verify.get(".".join([destination, source, message_id])) == None:
+            app_messages_verify.add(".".join([destination, source, message_id]), message)
+            app_messages_to_client.add(".".join([destination, source, message_id]), message)
     return JSONResponse({"ret": 0, "msg": "ok"})
 
 
@@ -79,14 +79,14 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     #TODO get status
     data = request.state.origin_data
     message_id = data["message_id"]
-    app = data["application"]
+    source = data["source"]
     destination = data["destination"]
-    message = app_messages_verify.get(".".join([destination, app, message_id]))
+    message = app_messages_verify.get(".".join([destination, source, message_id]))
     if message == None:
         return JSONResponse({"ret": 404, "msg": "Not found"})
     if type(message) == bytes:
         message = message.decode('utf-8')
-    sign = calculate.sha512(".".join([message_id, destination, app, message]))
+    sign = calculate.sha512(".".join([message_id, destination, source, message]))
     return JSONResponse({"ret": 0, "msg": "ok", "sign": sign})
 
 
@@ -99,15 +99,15 @@ async def post_multi(request: Request, backgroundtasks: BackgroundTasks):
         if newmessage["message_id"] == None:
             continue
         message_id = newmessage["message_id"]
-        app = newmessage["application"]
+        source = newmessage["source"]
         destination = newmessage["destination"]
-        message = app_messages_verify.get(".".join([destination, app, message_id]))
+        message = app_messages_verify.get(".".join([destination, source, message_id]))
         if message == None:
             continue
         if type(message) == bytes:
             message = message.decode('utf-8')
         sign = calculate.sha512(".".join(
-            [message_id, destination, app, message]))
+            [message_id, destination, source, message]))
         ret[message_id] = sign
     return JSONResponse({"ret": 0, "msg": "ok", "signs": ret})
 
@@ -123,14 +123,14 @@ async def post_messages(request: Request, backgroundtasks: BackgroundTasks):
         
         message = client_messages_to_app.get(new_message)
         message_id = new_message.split(".")[2]
-        app = new_message.split(".")[1]
+        source = new_message.split(".")[1]
         destination = new_message.split(".")[0]
         if type(message) == bytes:
             message = message.decode('utf-8')
         messages[message_id] = {
             "destination": destination,
             "message": message,
-            "application": app
+            "source": source
         }
     return JSONResponse({"ret": 0, "msg": "ok", "messages": messages})
 
@@ -141,17 +141,17 @@ async def post_updatestatus(request: Request,
     #TODO update status
     data = request.state.origin_data
     message_id = data["message_id"]
-    app = data["application"]
+    source = data["source"]
     destination = request.state.user_uuid
     sign = data["sign"]
-    message = client_messages_to_app.get(".".join([destination, app, message_id]))
+    message = client_messages_to_app.get(".".join([destination, source, message_id]))
     if message == None:
         return JSONResponse({"ret": 404, "msg": "Not found"})
     if type(message) == bytes:
         message = message.decode('utf-8')
     if calculate.sha512_verify(
-            ".".join([message_id, destination, app, message]), sign):
-        client_messages_to_app.remove(".".join([destination, app, message_id]))
+            ".".join([message_id, destination, source, message]), sign):
+        client_messages_to_app.remove(".".join([destination, source, message_id]))
         return JSONResponse({"ret": 0, "msg": "ok"})
     else:
         return JSONResponse({"ret": 401, "msg": "Sign Invalid"})
@@ -166,13 +166,13 @@ async def post_updatemultistatus(request: Request,
     for newmessage in messages:
         message_id = newmessage["message_id"]
         sign = newmessage["sign"]
-        app = newmessage["application"]
-        message = client_messages_to_app.get(".".join([destination, app, message_id]))
+        source = newmessage["source"]
+        message = client_messages_to_app.get(".".join([destination, source, message_id]))
         if message == None:
             continue
         if type(message) == bytes:
             message = message.decode('utf-8')
         if calculate.sha512_verify(
-                ".".join([message_id, destination, app, message]), sign):
-            client_messages_to_app.remove(".".join([destination, app, message_id]))
+                ".".join([message_id, destination, source, message]), sign):
+            client_messages_to_app.remove(".".join([destination, source, message_id]))
     return JSONResponse({"ret": 0, "msg": "ok"})

@@ -73,13 +73,13 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     easts = request.state.origin_data["east"]
     for east in easts:
         message_id = east["message_id"]
-        app = east["application"]
-        message = app_messages_to_client.get(".".join([user_id, app, message_id]))
+        source = east["source"]
+        message = app_messages_to_client.get(".".join([user_id, source, message_id]))
         if message is None:
             continue
         message = message.decode('utf-8')
-        if calculate.sha512_verify(".".join([message_id, user_id, app, message]), east["sign"]):
-            app_messages_to_client.remove(".".join([user_id, app, message_id]))
+        if calculate.sha512_verify(".".join([message_id, user_id, source, message]), east["sign"]):
+            app_messages_to_client.remove(".".join([user_id, source, message_id]))
 
     
     # Receive new messages from the client
@@ -88,19 +88,19 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
     for west in wests:
         try:
             message_id = west["message_id"]
-            app = west["application"]
+            source = west["source"]
             destination = west["destination"]
             message = west["message"]
             if type(message) == dict or type(message) == list:
                 message = calculate.base64_encode(json.dumps(message, indent=0))
-            if client_messages_verify.get(".".join([destination, app, message_id])) is None:
-                client_messages_verify.add(".".join([destination, app, message_id]), message)
-                client_messages_to_app.add(".".join([destination, app, message_id]), message)
+            if client_messages_verify.get(".".join([destination, source, message_id])) is None:
+                client_messages_verify.add(".".join([destination, source, message_id]), message)
+                client_messages_to_app.add(".".join([destination, source, message_id]), message)
             sign = calculate.sha512(".".join(
-            [message_id, destination, app, message]))
+            [message_id, destination, source, message]))
             data[message_id] = {
                 "sign": sign,
-                "application": app,
+                "source": source,
                 "destination": destination,
             }
         except:
@@ -118,14 +118,14 @@ async def post_status(request: Request, backgroundtasks: BackgroundTasks):
         
         message = app_messages_to_client.get(new_message)
         message_id = new_message.split(".")[2]
-        app = new_message.split(".")[1]
+        source = new_message.split(".")[1]
         destination = new_message.split(".")[0]
         if type(message) == bytes:
             message = message.decode('utf-8')
         data[message_id] = {
             "destination": destination,
             "message": message,
-            "application": app
+            "source": source
         }
 
     res["east"] = data
